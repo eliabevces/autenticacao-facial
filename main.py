@@ -4,6 +4,7 @@ import sys
 from viola_jones import detect_face
 import numpy as np
 import cv2 as cv
+from datetime import datetime
 
 
 
@@ -27,42 +28,78 @@ def get_images_and_label(path):
         faces.append(image_array)
         ids.append(id)
     return faces, ids   
-detect_face('data/fotos')
 
-train_path = 'data/detectadas/treino/'
-test_path = 'data/detectadas/teste/'
+train_path = 'data/detectadas/lfw/'
 
-faces = []
-labels = []
+faces_train = []
+labels_train = []
+faces_test = []
+labels_test = []
 for path in [os.path.join(train_path, f) for f in os.listdir(train_path)]:
     i, l = get_images_and_label(path)
-    faces.extend(i)
-    labels.extend(l)
+    faces_train.extend(i[:int(len(i)*0.7)])
+    labels_train.extend(l[:int(len(l)*0.7)])
+    faces_test.extend(i[int(len(i)*0.7):])
+    labels_test.extend(l[int(len(l)*0.7):])
 
-faces = [cv.resize(face, (200, 200)) for face in faces]
+print('Train: ', len(faces_train))
+print('Test: ', len(faces_test))
 
-# recognizer = cv.face.EigenFaceRecognizer_create()
-recognizer = cv.face.FisherFaceRecognizer_create()
-# recognizer = cv.face.LBPHFaceRecognizer_create()
+faces_train = [cv.resize(face, (200, 200)) for face in faces_train]
+faces_test = [cv.resize(face, (200, 200)) for face in faces_test]
 
-labels = [int(i) for i in labels]
-recognizer.train(faces, np.array(labels))
+labels_train = [int(i) for i in labels_train]
+labels_test = [int(i) for i in labels_test]
 
-for path in [os.path.join(test_path, f) for f in os.listdir(test_path)]:
-    i, l = get_images_and_label(path)
-    for image in i:
-        image = cv.resize(image, (200, 200))
+recognizerEigenface = cv.face.EigenFaceRecognizer_create()
+recognizerFisherface = cv.face.FisherFaceRecognizer_create()
+recognizerLBPH = cv.face.LBPHFaceRecognizer_create()
 
-        print(l[0])
-        label, confidence = recognizer.predict(image)
-        print(f'Label: {label} with confidence: {confidence}')
-        cv.imshow(f'{label}', image)
-        print( str(label) + ' ' + l[0])
+# train
+print('Training models...')
+print('Eigenface')
+start = datetime.now()
+recognizerEigenface.train(faces_train, np.array(labels_train))
+print("time: ", datetime.now() - start)
+print('Fisherface')
+start = datetime.now()
+recognizerFisherface.train(faces_train, np.array(labels_train))
+print("time: ", datetime.now() - start)
+print('LBPH')
+start = datetime.now()
+recognizerLBPH.train(faces_train, np.array(labels_train))
+print("time: ", datetime.now() - start)
 
-        cv.waitKey(0)
+# save models
+recognizerEigenface.save('models/recognizerEigenface.yml')
+recognizerFisherface.save('models/recognizerFisherface.yml')
+recognizerLBPH.save('models/recognizerLBPH.yml')
 
-        if str(label) == l[0]:
-            print('Correct!')
-        else:
-            print('Incorrect!')
 
+# test
+total = 0
+correct = 0
+for i in range(len(faces_test)):
+    label, confidence = recognizerEigenface.predict(faces_test[i])
+    if label == labels_test[i]:
+        correct += 1
+    total += 1
+print('Eigenface: ', correct/total)
+
+total = 0
+correct = 0
+for i in range(len(faces_test)):
+    label, confidence = recognizerFisherface.predict(faces_test[i])
+    if label == labels_test[i]:
+        correct += 1
+    total += 1
+print('Fisherface: ', correct/total)
+
+total = 0
+correct = 0
+for i in range(len(faces_test)):
+    label, confidence = recognizerLBPH.predict(faces_test[i])
+    if label == labels_test[i]:
+        correct += 1
+    total += 1
+print('LBPH: ', correct/total)

@@ -5,6 +5,7 @@ from viola_jones import detect_face
 import numpy as np
 import cv2 as cv
 from datetime import datetime
+from sklearn.utils import shuffle
 
 
 
@@ -47,9 +48,11 @@ print('Test: ', len(faces_test))
 
 faces_train = [cv.resize(face, (200, 200)) for face in faces_train]
 faces_test = [cv.resize(face, (200, 200)) for face in faces_test]
+faces_train, labels_train = shuffle(faces_train, labels_train)
 
 labels_train = [int(i) for i in labels_train]
 labels_test = [int(i) for i in labels_test]
+faces_test, labels_test = shuffle(faces_test, labels_test)
 
 recognizerEigenface = cv.face.EigenFaceRecognizer_create()
 recognizerFisherface = cv.face.FisherFaceRecognizer_create()
